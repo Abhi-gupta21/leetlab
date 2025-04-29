@@ -125,5 +125,18 @@ export const logout = async (req, res) => {
 }
 
 export const check = async (req, res) => {
-    
+    try {
+        const user = req.user
+        res.status(200).json({
+            message: "user found",
+            success: true,
+            user
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: "something went wrong while fetching user details",
+            success: false,
+            error
+        })
+    }
 }
