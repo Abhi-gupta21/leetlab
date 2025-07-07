@@ -5,7 +5,14 @@ import jwt from "jsonwebtoken";
 
 
 export const register = async (req, res) => {
-    const { name, email, password } = req.body
+    const { name, email, password, role } = req.body
+
+    if(role !== 'ADMIN' && role !== 'USER'){
+        return res.status(400).json({
+            success: false,
+            error: "role should either be ADMIN or USER"
+        })
+    }
     try {
         const existingUser = await db.user.findUnique({
             where: {
@@ -26,7 +33,7 @@ export const register = async (req, res) => {
                 name,
                 email,
                 password: hashedPassword,
-                role: UserRole.USER
+                role
             }
         })
 
