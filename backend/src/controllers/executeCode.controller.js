@@ -1,4 +1,6 @@
-import { submitBatch, pollBatchResults } from "../libs/judge0.lib.js"
+import { all } from "axios"
+import { db } from "../libs/db.js"
+import { submitBatch, pollBatchResults, getlanguagename } from "../libs/judge0.lib.js"
 
 export const executeCode = async (req, res) => {
     try {
@@ -54,10 +56,71 @@ export const executeCode = async (req, res) => {
             // console.log(`Matched: ${passed}\n\n\n`)
         })
 
-        res.status(200).json({success: true, message: "Code executed successfully", results})
+        console.log(detailResults)
+
+        const submission = await db.submission.create({
+            data: {
+                userId,
+                problemId,
+                sourceCode: source_code,
+                language:getlanguagename(language_id),
+                stdin: stdin.join("\n"),
+                stdout: JSON.stringify(detailResults.map((r) => r.stdout)),
+                stderr: detailResults.some((r) => r.stderr) ? JSON.stringify(detailResults.map((r) => r.stderr)) : null,
+                compileOutput: detailResults.some((r) => r.compiledOutput) ? JSON.stringify(detailResults.map((r) => r.compiledOutput)) : null,
+                status: allPassed ? "Accepted" : "Wrong Answer",
+                memory: detailResults.some((r) => r.memory) ? JSON.stringify(detailResults.map((r) => r.memory)) : null,
+                time: detailResults.some((r) => r.time) ? JSON.stringify(detailResults.map((r) => r.time)) : null,
+            }
+        })
+
+        if(allPassed){
+            await db.problemSolved.upsert({
+                where: {
+                    userId_problemId: {
+                        userId,
+                        problemId
+                    }
+                },
+                update: {},
+                create: {
+                    userId,
+                    problemId
+                }
+            })
+        }
+
+        const testCaseResults = detailResults.map((result) => ({
+            submissionId: submission.id,
+            testCase: JSON.stringify(result.testCase),
+            passed: result.passed,
+            stdout: result.stdout,
+            expected: result.expected,
+            stderr: result.stderr,
+            compiledOutput: result.compiledOutput,
+            status: result.status,
+            memory: result.memory,
+            time: result.time
+        }))
+
+        await db.testCaseResult.createMany({
+            data: testCaseResults
+        })
+
+        const submissionWithTestCase = await db.submission.findUnique({
+            where: {
+                id: submission.id
+            },
+            include: {
+                testcases: true
+            }
+        })
+
+        res.status(200).json({success: true, message: "Code executed successfully", submission: submissionWithTestCase})
 
 
     } catch (error) {
-        
+        console.log(error)
+        res.status(500).json({success: false, message: "Something went wrong while executing code", error})
     }
 }
