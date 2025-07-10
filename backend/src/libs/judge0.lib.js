@@ -3,6 +3,16 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+
+export const getlanguagename = (language_id) => {
+    const langmap = {
+        71: "PYTHON",
+        62: "JAVA",
+        63: "JAVASCRIPT"
+    }
+
+    return langmap[language_id] || "Unknown"
+}
 export const getJudge0LanguageId = (language) => {
     const languageMap = {
         "PYTHON": 71,
